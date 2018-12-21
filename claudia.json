@@ -1,0 +1,7 @@
+{
+  "lambda": {
+    "role": "lambda-image-processor-executor",
+    "name": "lambda-image-processor",
+    "region": "us-west-2"
+  }
+}
