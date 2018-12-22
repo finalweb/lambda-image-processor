@@ -4,7 +4,7 @@ const gm = require('gm').subClass({imageMagick: true});
 
 exports.resizeImage = async function (args) {
   args = Object.assign({}, args);
-  let ext = args.key.split('.').pop();
+  let ext = args.file_extension || args.key.split('.').pop();
   if (typeof args.destination_key === 'undefined') {
     let fileFolder = args.key.split('/original/').shift();
     let fileName = args.width || args.size;
@@ -14,7 +14,7 @@ exports.resizeImage = async function (args) {
   console.log('EXT: ', ext, ' DESTINATION KEY: ', args.destination_key);
 
   return getFile(args.source_bucket, args.key, 'tempfile').then((contentType) => {
-    contentType = contentType || args.contentType;
+    contentType = args.contentType || contentType;
 
     return new Promise((resolve, reject) => {
 

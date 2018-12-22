@@ -6,7 +6,6 @@ const sqs = require('./src/queue-helper.js');
 exports.handler = async (event) => {
   let data = JSON.parse(event.Records[0].body);
   let {operation, ...args} = data;
-  let callbackAction = args.callback_action || 'Finalweb\\Jobs\\ResizeCompletedJob';
 
   if (fs.existsSync('/tmp/tempfile')) {
     fs.unlinkSync('/tmp/tempfile');
@@ -14,18 +13,22 @@ exports.handler = async (event) => {
 
   // use the source as destination if destination not specified
   args.destination_bucket = args.destination_bucket || args.source_bucket;
+  args.contentType = args.file_mime_type;
   let ext;
   switch (operation) {
     case 'resize':
       return resizeImage(args).then(() => {
-        return sqs.sendMessage(callbackAction, {
-          success: true,
-          originalRequest: data
-        }, args.sqs_url);
+        if (args.callback_action) {
+          return sqs.sendMessage(callbackAction, {
+            success: true,
+            originalRequest: data
+          }, args.sqs_url);
+        }
+        return true;
       });
 
     case 'thumbnail':
-      ext = args.key.split('.').pop();
+      ext = args.file_extension || args.key.split('.').pop();
       let fileFolder = args.key.split('/original/').shift();
       let destinationFolder = fileFolder + '/_thumbnails/';
 
@@ -37,15 +40,18 @@ exports.handler = async (event) => {
         args.sizes.forEach((size) => {
           console.log('Sizing to: ', size);
           args.size = size;
-          args.contentType = contentType;
+          args.contentType = args.file_mime_type || contentType;
           args.destination_key = fileFolder + '/_thumbnails/' + args.size + '.' + ext;
           promises.push(resizeImage(args));
         });
         return Promise.all(promises).then(() => {
-          return sqs.sendMessage(callbackAction, {
-            success: true,
-            originalRequest: data
-          }, args.sqs_url);
+          if (args.callback_action) {
+            return sqs.sendMessage(callbackAction, {
+              success: true,
+              originalRequest: data
+            }, args.sqs_url);
+          }
+          return true;
         });
       });
       break;
